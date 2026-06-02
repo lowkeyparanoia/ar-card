@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="theme-color" content="#020408"/>
+<title>JRENOTH MISQUITH</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700;800&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+<style>
+/* ── tokens ───────────────────────────────────────────────────── */
+:root {
+  --bg:   #020408; --bg2: #050d12; --bg3: #07121a;
+  --surf: #0a1922; --surf2: #0e2030; --surf3: #1e252c;
+  --bdr:  #102840; --bdr2: #1a3d5c;
+  --green: #00ff41; --green-dim: #00c032; --green-mute: #003d10;
+  --cyan:  #00e5ff; --gold: #ffd700; --purple: #9a6cf0; --orange: #f07a30;
+  --text: #b8d4c8; --dim: #6a9080; --mute: #2d5040;
+  --font: 'JetBrains Mono', monospace;
+  --sans: 'Space Grotesk', sans-serif;
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+
+html { scroll-behavior: smooth; }
+
+/* ── CRT scanlines ── */
+body::after {
+  content:''; position:fixed; inset:0; z-index:9999; pointer-events:none;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+}
+
+/* ── synthwave background ── */
+body {
+  background: var(--bg);
+  font-family: var(--font);
+  min-height: 100vh;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Horizon glow */
+body::before {
+  content: '';
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 50vh;
+  background:
+    /* horizon line */
+    linear-gradient(180deg,
+      transparent 0%,
+      rgba(0,255,65,0.03) 48%,
+      rgba(0,255,65,0.12) 50%,
+      rgba(0,255,65,0.03) 52%,
+      transparent 100%
+    );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Perspective grid */
+.grid-bg {
+  position: fixed;
+  bottom: 0; left: -50%; right: -50%;
+  height: 55vh;
+  background-image:
+    linear-gradient(rgba(0,255,65,0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,65,0.18) 1px, transparent 1px);
+  background-size: 60px 60px;
+  transform: perspective(350px) rotateX(70deg);
+  transform-origin: bottom center;
+  animation: grid-scroll 3s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+  mask-image: radial-gradient(ellipse 80% 100% at 50% 100%, black 30%, transparent 100%);
+}
+
+@keyframes grid-scroll {
+  from { background-position: 0 0; }
+  to   { background-position: 0 60px; }
+}
+
+/* ── page wrapper ── */
+.wrap {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  padding: 36px 16px 48px;
+  width: 100%;
+  max-width: 400px;
+}
+
+/* ── name block ── */
+.name-block { text-align: center; }
+.name {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-shadow: 0 0 20px rgba(0,255,65,0.5);
+}
+.tagline {
+  font-size: 10px;
+  color: var(--dim);
+  margin-top: 4px;
+  letter-spacing: 0.5px;
+}
+
+/* ═══ 3D FLIP CARD ═══════════════════════════════════════════ */
+.card-scene {
+  width: 340px;
+  height: 200px;
+  perspective: 1200px;
+  cursor: pointer;
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.65s cubic-bezier(.4,.2,.2,1);
+  border-radius: 6px;
+}
+
+.card-scene.flipped .card-inner { transform: rotateY(180deg); }
+
+.card-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  /* overflow:hidden breaks backface-visibility in Safari — use clip-path instead */
+  clip-path: inset(0 round 6px);
+  /* Force GPU layer for correct 3D isolation */
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* ── FRONT ── */
+.card-front {
+  background: var(--bg);
+  border: 1px solid var(--bdr2);
+  box-shadow:
+    inset 0 0 20px rgba(0,255,65,0.12),
+    0 0 40px rgba(0,255,65,0.15),
+    0 0 1px rgba(0,255,65,0.4);
+  display: flex;
+  flex-direction: column;
+}
+
+/* top accent bar */
+.card-front::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--green), var(--cyan));
+  z-index: 3;
+}
+
+.card-canvas {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.card-front-body {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+}
+
+/* hexagon logo */
+.hex-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hex {
+  width: 30px; height: 30px;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: linear-gradient(135deg, var(--green), var(--cyan));
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.hex-initials {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 800;
+  color: #000;
+  letter-spacing: -0.5px;
+}
+.flip-hint {
+  font-size: 8px;
+  color: var(--mute);
+  letter-spacing: 0.3px;
+  margin-left: auto;
+}
+
+/* name */
+.card-name {
+  font-family: var(--sans);
+  font-size: 19px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.3px;
+  line-height: 1;
+  text-shadow: 0 0 20px rgba(0,255,65,0.35);
+}
+
+/* role chips */
+.role-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+.chip {
+  font-size: 8px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid;
+  font-family: var(--font);
+  letter-spacing: 0.2px;
+}
+.chip-g  { color: var(--green);  border-color: rgba(0,255,65,0.35);  background: rgba(0,255,65,0.06); }
+.chip-c  { color: var(--cyan);   border-color: rgba(0,229,255,0.3);  background: rgba(0,229,255,0.05); }
+.chip-go { color: var(--gold);   border-color: rgba(255,215,0,0.3);  background: rgba(255,215,0,0.05); }
+.chip-p  { color: var(--purple); border-color: rgba(154,108,240,0.3);background: rgba(154,108,240,0.05); }
+.chip-o  { color: var(--orange); border-color: rgba(240,122,48,0.3); background: rgba(240,122,48,0.05); }
+
+/* card bottom */
+.card-bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+.card-handle {
+  font-size: 9px;
+  color: var(--mute);
+  letter-spacing: 0.3px;
+}
+#qr-front {
+  border-radius: 3px;
+  background: #fff;
+  padding: 3px;
+  image-rendering: pixelated;
+}
+
+/* ── BACK ── */
+.card-back {
+  transform: rotateY(180deg);
+  background: #07111b;
+  border: 1px solid var(--bdr2);
+  box-shadow:
+    inset 0 0 24px rgba(0,229,255,0.07),
+    0 0 30px rgba(0,229,255,0.1);
+}
+
+/* top cyan accent bar */
+.card-back::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--cyan), var(--purple));
+  z-index: 3;
+}
+
+.card-back-body {
+  position: relative;
+  z-index: 2;
+  width: 100%; height: 100%;
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  padding: 14px 14px 12px 14px;
+  padding-top: 16px; /* clear accent bar */
+}
+
+/* Left column */
+.back-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-right: 1px solid var(--bdr);
+  padding-right: 12px;
+  min-width: 0;
+}
+
+.back-name {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.3px;
+  line-height: 1.1;
+}
+
+.back-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.back-link {
+  font-size: 9px;
+  color: var(--text);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.blk {
+  font-size: 8px;
+  color: var(--cyan);
+  background: rgba(0,229,255,0.1);
+  border: 1px solid rgba(0,229,255,0.2);
+  padding: 0 4px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.back-stats {
+  font-size: 7.5px;
+  color: var(--gold);
+  line-height: 1.4;
+}
+
+/* Right column */
+.back-right {
+  width: 140px;
+  flex-shrink: 0;
+  padding-left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.back-skills-label {
+  font-size: 8px;
+  color: var(--mute);
+  letter-spacing: 0.5px;
+}
+
+.back-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.bsk {
+  font-size: 7.5px;
+  padding: 2px 5px;
+  border-radius: 2px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.bsk-g  { color: var(--green);  border-color: rgba(0,255,65,0.3);  background: rgba(0,255,65,0.06); }
+.bsk-c  { color: var(--cyan);   border-color: rgba(0,229,255,0.25); background: rgba(0,229,255,0.05); }
+.bsk-go { color: var(--gold);   border-color: rgba(255,215,0,0.25); background: rgba(255,215,0,0.05); }
+.bsk-p  { color: var(--purple); border-color: rgba(154,108,240,0.25);background: rgba(154,108,240,0.05); }
+
+/* ar mini btn — now on left col bottom */
+.ar-mini {
+  font-size: 8px;
+  color: var(--green);
+  border: 1px solid rgba(0,255,65,0.3);
+  padding: 3px 8px;
+  border-radius: 2px;
+  text-decoration: none;
+  letter-spacing: 0.5px;
+  align-self: flex-start;
+}
+
+/* stats — legacy, keep for other uses */
+.stats-row {
+  display: flex;
+  gap: 10px;
+  font-size: 8px;
+  color: var(--gold);
+}
+.stats-row span { color: var(--dim); }
+
+/* links strip */
+.back-links {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.back-link {
+  font-size: 9px;
+  color: var(--text);
+  text-decoration: none;
+  display: flex;
+  gap: 6px;
+}
+.back-link-key { color: var(--mute); width: 52px; flex-shrink: 0; }
+.back-link-val { color: var(--green); }
+
+/* ar mini btn */
+.ar-mini {
+  font-size: 9px;
+  color: var(--green);
+  border: 1px solid rgba(0,255,65,0.35);
+  padding: 3px 10px;
+  border-radius: 2px;
+  text-decoration: none;
+  align-self: flex-end;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
+/* ── tap hint ── */
+.tap-hint {
+  font-size: 9px;
+  color: var(--mute);
+  letter-spacing: 0.5px;
+  animation: fade-out 2.5s ease 2s forwards;
+}
+@keyframes fade-out { to { opacity:0; pointer-events:none; } }
+
+/* ── AR button ── */
+.ar-btn {
+  width: 100%;
+  padding: 13px;
+  background: var(--green-mute);
+  border: 1px solid var(--green-dim);
+  color: var(--green);
+  font-family: var(--font);
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.ar-btn:hover { background: rgba(0,255,65,0.1); box-shadow: 0 0 16px rgba(0,255,65,0.12); }
+
+/* ── contact rows ── */
+.contacts {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.contact-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  background: var(--surf);
+  border: 1px solid var(--bdr);
+  text-decoration: none;
+  transition: border-color 0.15s;
+  border-radius: 2px;
+}
+.contact-row:hover { border-color: var(--green-dim); }
+.contact-key { font-size: 10px; color: var(--green); width: 60px; flex-shrink: 0; }
+.contact-arr { color: var(--mute); font-size: 9px; }
+.contact-val { font-size: 11px; color: var(--text); flex:1; }
+.contact-ext { font-size: 9px; color: var(--mute); }
+
+/* ── footer ── */
+.footer { font-size: 9px; color: var(--mute); letter-spacing: 1.5px; }
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+
+<div class="wrap">
+
+  <div class="name-block">
+    <div class="name">JRENOTH MISQUITH</div>
+    <div class="tagline">Backend · AI/ML · Quant · Music Tech · Projection Mapping</div>
+  </div>
+
+  <!-- 3D flip card -->
+  <div class="card-scene" id="card" onclick="this.classList.toggle('flipped')">
+    <div class="card-inner">
+
+      <!-- FRONT -->
+      <div class="card-face card-front">
+        <canvas class="card-canvas" id="cvs-front"></canvas>
+        <div class="card-front-body">
+          <div class="hex-logo">
+            <div class="hex"><span class="hex-initials">J·M</span></div>
+            <span class="flip-hint">// tap to flip ↻</span>
+          </div>
+          <div>
+            <div class="card-name">JRENOTH MISQUITH</div>
+            <div class="role-chips">
+              <span class="chip chip-g">Backend</span>
+              <span class="chip chip-c">AI/ML</span>
+              <span class="chip chip-go">Quant</span>
+              <span class="chip chip-p">Music Tech</span>
+              <span class="chip chip-o">Projection Mapping</span>
+            </div>
+          </div>
+          <div class="card-bottom">
+            <span class="card-handle">lowkeyparanoia</span>
+            <div id="qr-front"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BACK — clean 2-col layout for 340×200px -->
+      <div class="card-face card-back">
+        <div class="card-back-body">
+
+          <!-- Left column: links + stats -->
+          <div class="back-left">
+            <div class="back-name">JRENOTH MISQUITH</div>
+            <div class="back-links">
+              <a class="back-link" href="https://github.com/lowkeyparanoia" target="_blank">
+                <span class="blk">gh</span>lowkeyparanoia
+              </a>
+              <a class="back-link" href="https://linkedin.com/in/jrenoth" target="_blank">
+                <span class="blk">li</span>jrenoth
+              </a>
+              <a class="back-link" href="https://lowkeyparanoia.github.io/portfolio" target="_blank">
+                <span class="blk">↗</span>portfolio
+              </a>
+            </div>
+            <div class="back-stats">3 continents · 5 companies · Bloomberg #140</div>
+            <a href="ar.html" class="ar-mini">◈ AR mode</a>
+          </div>
+
+          <!-- Right column: skill tags -->
+          <div class="back-right">
+            <div class="back-skills-label">// stack</div>
+            <div class="back-skills">
+              <span class="bsk bsk-g">Rust</span>
+              <span class="bsk bsk-c">Python</span>
+              <span class="bsk bsk-g">FastAPI</span>
+              <span class="bsk bsk-p">TouchDesigner</span>
+              <span class="bsk bsk-go">Pine Script</span>
+              <span class="bsk bsk-c">Go</span>
+              <span class="bsk bsk-g">Supabase</span>
+              <span class="bsk bsk-p">Claude API</span>
+              <span class="bsk bsk-c">OSC</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tap-hint">$ tap card --flip</div>
+
+  <a class="ar-btn" href="ar.html">◈ &nbsp;./view_in_ar.sh &nbsp;— place card in real space</a>
+
+  <div class="contacts">
+    <a class="contact-row" href="https://github.com/lowkeyparanoia" target="_blank">
+      <span class="contact-key">github</span>
+      <span class="contact-arr">▸</span>
+      <span class="contact-val">lowkeyparanoia</span>
+      <span class="contact-ext">↗</span>
+    </a>
+    <a class="contact-row" href="https://linkedin.com/in/jrenoth" target="_blank">
+      <span class="contact-key">linkedin</span>
+      <span class="contact-arr">▸</span>
+      <span class="contact-val">jrenoth misquith</span>
+      <span class="contact-ext">↗</span>
+    </a>
+    <a class="contact-row" href="https://lowkeyparanoia.github.io/portfolio" target="_blank">
+      <span class="contact-key">portfolio</span>
+      <span class="contact-arr">▸</span>
+      <span class="contact-val">lowkeyparanoia.github.io/portfolio</span>
+      <span class="contact-ext">↗</span>
+    </a>
+  </div>
+
+  <div class="footer">JRENOTH MISQUITH · BENGALURU · INDIA</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+// ── Circuit board canvas ─────────────────────────────────────────
+function drawCircuit(canvas, color) {
+  const W = canvas.width = canvas.offsetWidth || 340;
+  const H = canvas.height = canvas.offsetHeight || 200;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+  const G = 20;
+  ctx.strokeStyle = color || 'rgba(0,255,65,0.35)';
+  ctx.lineWidth = 0.8;
+
+  // horizontal traces
+  for (let r = 0; r < Math.ceil(H / G) + 1; r++) {
+    const y = r * G;
+    let x = 0;
+    while (x < W) {
+      if (Math.random() > 0.5) {
+        const len = G * (Math.floor(Math.random() * 4) + 1);
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(Math.min(x + len, W), y); ctx.stroke();
+        x += len + G;
+      } else { x += G; }
+    }
+  }
+  // vertical traces
+  for (let c = 0; c < Math.ceil(W / G) + 1; c++) {
+    const x = c * G;
+    let y = 0;
+    while (y < H) {
+      if (Math.random() > 0.55) {
+        const len = G * (Math.floor(Math.random() * 3) + 1);
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, Math.min(y + len, H)); ctx.stroke();
+        y += len + G;
+      } else { y += G; }
+    }
+  }
+  // vias
+  ctx.fillStyle = color || 'rgba(0,255,65,0.5)';
+  for (let r = 0; r < Math.ceil(H / G); r++) {
+    for (let c = 0; c < Math.ceil(W / G); c++) {
+      if (Math.random() > 0.82) {
+        const x = c * G, y = r * G;
+        ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.strokeStyle = color || 'rgba(0,255,65,0.2)';
+        ctx.lineWidth = 0.5; ctx.stroke();
+        ctx.strokeStyle = color || 'rgba(0,255,65,0.35)';
+        ctx.lineWidth = 0.8;
+      }
+    }
+  }
+}
+
+window.addEventListener('load', () => {
+  drawCircuit(document.getElementById('cvs-front'), 'rgba(0,255,65,0.35)');
+  drawCircuit(document.getElementById('cvs-back'),  'rgba(0,229,255,0.3)');
+});
+
+// ── QR code ──────────────────────────────────────────────────────
+new QRCode(document.getElementById('qr-front'), {
+  text: 'https://lowkeyparanoia.github.io/ar-card',
+  width: 60, height: 60,
+  colorDark: '#000000', colorLight: '#ffffff',
+  correctLevel: QRCode.CorrectLevel.M,
+});
+</script>
+</body>
+</html>
