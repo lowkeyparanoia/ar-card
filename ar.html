@@ -518,31 +518,6 @@ function showFallback() {
   document.getElementById('fallback').style.display = 'flex';
 }
 
-// Detect iOS on page load — show correct instructions
-(function() {
-  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const isAndroid = /Android/i.test(navigator.userAgent);
-  const note = document.getElementById('s-note');
-  const arBtn = document.getElementById('ar-btn');
-
-  if (isIOS) {
-    // iOS: AR button opens WebXR Viewer app store link instead
-    note.innerHTML = '⚠️ iPhone: AR needs <a href="https://apps.apple.com/app/webxr-viewer/id1295998056" target="_blank" style="color:var(--cyan)">WebXR Viewer app</a> (free)<br>3D Preview works on any browser';
-    if (arBtn) {
-      arBtn.textContent = '◈ Get WebXR Viewer (iPhone)';
-      arBtn.onclick = () => window.open('https://apps.apple.com/app/webxr-viewer/id1295998056', '_blank');
-    }
-  } else if (!isAndroid) {
-    // Desktop
-    note.innerHTML = 'AR: Android Chrome only · 3D Preview: this browser works ✓';
-    if (arBtn) {
-      arBtn.textContent = '◈ AR (Android only)';
-      arBtn.disabled = true;
-      arBtn.style.opacity = '0.4';
-      arBtn.style.cursor = 'not-allowed';
-    }
-  }
-})();
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
