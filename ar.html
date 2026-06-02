@@ -367,19 +367,38 @@ const CW = 0.342, CH = 0.197;
 
 // Build card textures (high-res: 1024×590)
 const TEX_W = 1024, TEX_H = 590;
-const frontCanvas = drawCardFront(TEX_W, TEX_H);
-const backCanvas  = drawCardBack(TEX_W, TEX_H);
-const frontTex = new THREE.CanvasTexture(frontCanvas);
-const backTex  = new THREE.CanvasTexture(backCanvas);
 
-// Max anisotropy = sharp texture at oblique angles (stops blur when tilted)
-const maxAniso = renderer.capabilities.getMaxAnisotropy();
-[frontTex, backTex].forEach(t => {
-  t.anisotropy  = maxAniso;
-  t.minFilter   = THREE.LinearFilter;       // no mipmaps = no blur at small sizes
-  t.magFilter   = THREE.LinearFilter;
-  t.generateMipmaps = false;
-  t.needsUpdate = true;
+// Preload fonts so canvas measureText is accurate before drawing
+const fontMono = new FontFace('JetBrains Mono', 'url(https://fonts.gstatic.com/s/jetbrainsmono/v18/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKxjOVmtLDs.woff2)');
+const fontSans = new FontFace('Space Grotesk', 'url(https://fonts.gstatic.com/s/spacegrotesk/v16/V8mQoQDjQSkFtoMM3T6r8E7mF71Q-gowFXDkg5E.woff2)');
+
+let frontCanvas, backCanvas, frontTex, backTex;
+
+Promise.all([fontMono.load(), fontSans.load()]).then(fonts => {
+  fonts.forEach(f => document.fonts.add(f));
+  frontCanvas = drawCardFront(TEX_W, TEX_H);
+  backCanvas  = drawCardBack(TEX_W, TEX_H);
+
+  const maxAniso = renderer.capabilities.getMaxAnisotropy();
+  frontTex = new THREE.CanvasTexture(frontCanvas);
+  backTex  = new THREE.CanvasTexture(backCanvas);
+  [frontTex, backTex].forEach(t => {
+    t.anisotropy = maxAniso;
+    t.minFilter  = THREE.LinearFilter;
+    t.magFilter  = THREE.LinearFilter;
+    t.generateMipmaps = false;
+    t.needsUpdate = true;
+  });
+
+  // Signal ready
+  document.getElementById('start').style.pointerEvents = 'all';
+  document.getElementById('start').style.opacity = '1';
+}).catch(() => {
+  // Font load failed — draw with fallback font anyway
+  frontCanvas = drawCardFront(TEX_W, TEX_H);
+  backCanvas  = drawCardBack(TEX_W, TEX_H);
+  frontTex = new THREE.CanvasTexture(frontCanvas);
+  backTex  = new THREE.CanvasTexture(backCanvas);
 });
 
 // Card group: front plane + back plane (back-to-back)
@@ -448,10 +467,9 @@ function flipCard() {
     }
     requestAnimationFrame(animate);
   });
-  // Show/hide clickable links panel when showing back face in 3D preview
-  if (!xrMode && linksPanel()) {
-    linksPanel().style.display = cardFlipped ? 'block' : 'none';
-  }
+  // Links panel only in 3D preview — never in AR (dom-overlay interferes)
+  const lp = linksPanel();
+  if (lp) lp.style.display = (!xrMode && cardFlipped) ? 'block' : 'none';
 }
 
 // ── 3D Demo mode ──────────────────────────────────────────────────
@@ -479,18 +497,7 @@ function start3D() {
   });
 }
 
-// Double-tap detection for AR flip
-let lastTap = 0;
-canvas.addEventListener('touchend', (e) => {
-  if (!xrMode || placedCards.length === 0) return;
-  const now = Date.now();
-  if (now - lastTap < 350) {
-    e.preventDefault();
-    flipCard();
-    document.getElementById('hint').innerHTML = cardFlipped ? '↻ Double-tap again to flip back' : '↻ Double-tap to flip';
-  }
-  lastTap = now;
-}, { passive: false });
+// No double-tap needed — tap behaviour controlled inside session select handler
 
 // ── WebXR AR mode — attempt directly, no feature detection ────────
 async function startAR() {
@@ -511,36 +518,38 @@ async function startAR() {
 
     session.addEventListener('end', () => { xrMode = false; });
 
-    // On tap: place card 0.7m directly in front of wherever camera points
+    // TAP LOGIC:
+    // — No card placed yet → place card 0.7m in front of camera
+    // — Card already placed → flip it (tap = flip, no more spawning)
     session.addEventListener('select', () => {
+      if (placedCards.length > 0) {
+        // Already have a card — tap flips it
+        flipCard();
+        document.getElementById('hint').innerHTML =
+          cardFlipped ? 'Tap to flip back · ↻ Flip' : 'Tap to flip · ↻ Flip';
+        return;
+      }
+
+      // First tap — place the card
       const refSpace = renderer.xr.getReferenceSpace();
       if (!refSpace) return;
 
-      // Get current camera (viewer) pose from last rendered frame
       const xrCamera = renderer.xr.getCamera(camera);
-      const card = makeCard();
-
-      // Position: 0.7m forward from camera in camera's local -Z direction
       const pos = new THREE.Vector3();
       const quat = new THREE.Quaternion();
       const scale = new THREE.Vector3();
       xrCamera.matrixWorld.decompose(pos, quat, scale);
 
-      // Forward vector in world space (camera looks down -Z)
       const forward = new THREE.Vector3(0, 0, -0.7).applyQuaternion(quat);
+      const card = makeCard();
       card.position.copy(pos).add(forward);
-      card.userData.baseY = card.position.y;  // store for absolute float
-
-      // Face the user — card normal toward camera
+      card.userData.baseY = card.position.y;
       card.quaternion.copy(quat);
-      card.rotateX(0.15); // slight readable tilt
+      card.rotateX(0.15);
 
       scene.add(card);
       placedCards.push(card);
-
-      if (placedCards.length === 1) {
-        document.getElementById('hint').innerHTML = '✓ <b>Card placed</b> — tap again anywhere · ↻ Flip';
-      }
+      document.getElementById('hint').innerHTML = '✓ Card placed · <b>Tap to flip</b>';
     });
 
     renderer.setAnimationLoop((time, frame) => {
