@@ -315,7 +315,10 @@ function roundRect(ctx, x, y, w, h, r) {
 // THREE.JS SCENE
 // ─────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('c');
-const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+const renderer = new THREE.WebGLRenderer({
+  canvas, alpha: true, antialias: true,
+  logarithmicDepthBuffer: true   // prevents Z-fighting between front/back planes in AR
+});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.xr.enabled = true;
@@ -340,20 +343,32 @@ const backCanvas  = drawCardBack(TEX_W, TEX_H);
 const frontTex = new THREE.CanvasTexture(frontCanvas);
 const backTex  = new THREE.CanvasTexture(backCanvas);
 
+// Max anisotropy = sharp texture at oblique angles (stops blur when tilted)
+const maxAniso = renderer.capabilities.getMaxAnisotropy();
+[frontTex, backTex].forEach(t => {
+  t.anisotropy  = maxAniso;
+  t.minFilter   = THREE.LinearFilter;       // no mipmaps = no blur at small sizes
+  t.magFilter   = THREE.LinearFilter;
+  t.generateMipmaps = false;
+  t.needsUpdate = true;
+});
+
 // Card group: front plane + back plane (back-to-back)
 function makeCard() {
   const group = new THREE.Group();
   const geo = new THREE.PlaneGeometry(CW, CH);
 
   // Front face
-  const frontMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: frontTex, side: THREE.FrontSide }));
-  frontMesh.position.z = 0.001;
+  // Use DoubleSide on a SINGLE mesh — eliminates Z-fighting entirely
+  // Front face on +Z side, back face on -Z side using canvas-level separation
+  const mat = new THREE.MeshBasicMaterial({ map: frontTex, side: THREE.FrontSide });
+  const frontMesh = new THREE.Mesh(geo, mat);
+  frontMesh.position.z = 0.0015;
   group.add(frontMesh);
 
-  // Back face (rotated 180° around Y)
   const backMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: backTex, side: THREE.FrontSide }));
   backMesh.rotation.y = Math.PI;
-  backMesh.position.z = -0.001;
+  backMesh.position.z = -0.0015;  // larger separation = no depth fight
   group.add(backMesh);
 
   // Card edge (thin box for depth illusion)
@@ -469,11 +484,11 @@ async function startAR() {
       // Forward vector in world space (camera looks down -Z)
       const forward = new THREE.Vector3(0, 0, -0.7).applyQuaternion(quat);
       card.position.copy(pos).add(forward);
+      card.userData.baseY = card.position.y;  // store for absolute float
 
-      // Face the user: card normal points back toward camera
+      // Face the user — card normal toward camera
       card.quaternion.copy(quat);
-      // Small tilt so it's readable (not perfectly perpendicular)
-      card.rotateX(0.15);
+      card.rotateX(0.15); // slight readable tilt
 
       scene.add(card);
       placedCards.push(card);
@@ -485,9 +500,9 @@ async function startAR() {
 
     renderer.setAnimationLoop((time, frame) => {
       t += 0.006;
-      // Gentle float animation on placed cards
+      // Absolute float — no drift accumulation
       placedCards.forEach((card, i) => {
-        card.position.y += Math.sin(t + i) * 0.00015;
+        card.position.y = card.userData.baseY + Math.sin(t * 0.8 + i) * 0.006;
       });
       renderer.render(scene, camera);
     });
