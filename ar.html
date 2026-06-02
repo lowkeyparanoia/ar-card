@@ -73,10 +73,10 @@ canvas#c{display:block;width:100vw;height:100vh;}
   <div class="s-name">JRENOTH MISQUITH</div>
   <div class="s-sub">Point camera anywhere, tap to place card floating in real space. No markers. No flat surface needed.</div>
   <div class="btn-row">
-    <button class="btn btn-ar" onclick="startAR()">◈ Place in AR</button>
+    <button class="btn btn-ar" id="ar-btn" onclick="startAR()">◈ Place in AR</button>
     <button class="btn btn-3d" onclick="start3D()">⬡ 3D Preview</button>
   </div>
-  <div class="s-note">AR: Android Chrome 81+ · iOS: WebXR Viewer app<br>3D Preview: any browser, no camera needed</div>
+  <div class="s-note" id="s-note">AR: Android Chrome 81+ · 3D Preview: any browser</div>
   <a href="index.html" class="back-a">← back to card</a>
 </div>
 
@@ -502,6 +502,32 @@ function showFallback() {
   document.getElementById('start').style.display = 'none';
   document.getElementById('fallback').style.display = 'flex';
 }
+
+// Detect iOS on page load — show correct instructions
+(function() {
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const note = document.getElementById('s-note');
+  const arBtn = document.getElementById('ar-btn');
+
+  if (isIOS) {
+    // iOS: AR button opens WebXR Viewer app store link instead
+    note.innerHTML = '⚠️ iPhone: AR needs <a href="https://apps.apple.com/app/webxr-viewer/id1295998056" target="_blank" style="color:var(--cyan)">WebXR Viewer app</a> (free)<br>3D Preview works on any browser';
+    if (arBtn) {
+      arBtn.textContent = '◈ Get WebXR Viewer (iPhone)';
+      arBtn.onclick = () => window.open('https://apps.apple.com/app/webxr-viewer/id1295998056', '_blank');
+    }
+  } else if (!isAndroid) {
+    // Desktop
+    note.innerHTML = 'AR: Android Chrome only · 3D Preview: this browser works ✓';
+    if (arBtn) {
+      arBtn.textContent = '◈ AR (Android only)';
+      arBtn.disabled = true;
+      arBtn.style.opacity = '0.4';
+      arBtn.style.cursor = 'not-allowed';
+    }
+  }
+})();
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
