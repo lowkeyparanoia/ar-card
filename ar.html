@@ -253,16 +253,22 @@ function drawCardBack(w, h) {
 
   ctx.font = sf + 'px "JetBrains Mono", monospace';
   const links = [
-    ['gh ▸', 'lowkeyparanoia'],
-    ['li ▸', 'jrenoth'],
-    ['↗  ▸', 'portfolio'],
+    ['gh', 'lowkeyparanoia'],
+    ['li', 'jrenoth'],
+    ['↗', 'portfolio'],
   ];
   links.forEach(([key, val], i) => {
-    const y = h * 0.58 + i * (sf + 6);
-    ctx.fillStyle = 'rgba(0,229,255,0.6)';
-    ctx.fillText(key, lf, y);
+    const y = h * 0.58 + i * (sf + 7);
+    // Draw key badge background
+    const keyW = ctx.measureText(key).width + 8;
+    ctx.fillStyle = 'rgba(0,229,255,0.12)';
+    roundRect(ctx, lf, y - sf + 2, keyW, sf + 2, 2);
+    // Key text
+    ctx.fillStyle = '#00e5ff';
+    ctx.fillText(key, lf + 4, y);
+    // Value — offset by measured key width + gap, never overlaps
     ctx.fillStyle = '#b8d4c8';
-    ctx.fillText(val, lf + 42, y);
+    ctx.fillText(val, lf + keyW + 6, y);
   });
 
   ctx.font = (sf - 1) + 'px "JetBrains Mono", monospace';
@@ -443,14 +449,10 @@ function start3D() {
   });
 }
 
-// ── WebXR AR mode — no hit-test, no surface scanning ─────────────
-// Card placed 0.7m in front of camera wherever you point. Instant.
+// ── WebXR AR mode — attempt directly, no feature detection ────────
 async function startAR() {
-  if (!navigator.xr) { showFallback(); return; }
-  const ok = await navigator.xr.isSessionSupported('immersive-ar').catch(() => false);
-  if (!ok) { showFallback(); return; }
-
   try {
+    if (!navigator.xr) throw new Error('no xr');
     const session = await navigator.xr.requestSession('immersive-ar', {
       requiredFeatures: ['local'],          // no hit-test = no surface scan lag
       optionalFeatures: ['dom-overlay', 'local-floor'],
