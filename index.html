@@ -305,45 +305,56 @@ body::before {
   flex-direction: column;
   justify-content: space-between;
   border-right: 1px solid var(--bdr);
-  padding-right: 12px;
+  padding-right: 10px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .back-name {
   font-family: var(--sans);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   color: #fff;
   letter-spacing: -0.3px;
   line-height: 1.1;
+  white-space: nowrap;
 }
 
 .back-links {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .back-link {
   font-size: 9px;
   color: var(--text);
   text-decoration: none;
-  display: flex;
+  display: grid;
+  grid-template-columns: 22px 1fr; /* fixed key width — no overlap */
   align-items: center;
-  gap: 5px;
-  white-space: nowrap;
+  gap: 4px;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
+.back-link:hover { color: var(--cyan); }
+
 .blk {
-  font-size: 8px;
+  font-size: 7px;
   color: var(--cyan);
   background: rgba(0,229,255,0.1);
   border: 1px solid rgba(0,229,255,0.2);
-  padding: 0 4px;
+  padding: 1px 3px;
   border-radius: 2px;
-  flex-shrink: 0;
+  text-align: center;
+  letter-spacing: 0;
+}
+
+.back-link-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 9px;
 }
 
 .back-stats {
@@ -542,13 +553,16 @@ body::before {
             <div class="back-name">JRENOTH MISQUITH</div>
             <div class="back-links">
               <a class="back-link" href="https://github.com/lowkeyparanoia" target="_blank">
-                <span class="blk">gh</span>lowkeyparanoia
+                <span class="blk">gh</span>
+                <span class="back-link-text">lowkeyparanoia</span>
               </a>
               <a class="back-link" href="https://linkedin.com/in/jrenoth" target="_blank">
-                <span class="blk">li</span>jrenoth
+                <span class="blk">li</span>
+                <span class="back-link-text">jrenoth</span>
               </a>
-              <a class="back-link" href="https://lowkeyparanoia.github.io/portfolio" target="_blank">
-                <span class="blk">↗</span>portfolio
+              <a class="back-link" href="https://lowkeyparanoia.github.io/portfolio/" target="_blank">
+                <span class="blk">↗</span>
+                <span class="back-link-text">portfolio</span>
               </a>
             </div>
             <div class="back-stats">3 continents · 5 companies · Bloomberg #140</div>
