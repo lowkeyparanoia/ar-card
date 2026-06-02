@@ -86,13 +86,36 @@ canvas#c{display:block;width:100vw;height:100vh;}
     <span class="hud-dot"></span>
   </div>
   <div class="hud-bottom">
-    <div class="hint" id="hint">Tap any flat surface to place card</div>
+    <div class="hint" id="hint">Tap to place · Double-tap to flip</div>
     <div class="hud-btns">
       <button class="hud-btn" onclick="resetCards()">⟳ Reset</button>
       <button class="hud-btn" onclick="flipCard()">↻ Flip</button>
       <a href="index.html" class="hud-btn">← cd ../</a>
     </div>
   </div>
+</div>
+
+<!-- Links panel — shown in 3D preview when card is flipped to back -->
+<div id="links-panel" style="
+  display:none; position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
+  z-index:60; background:rgba(7,17,27,0.92); border:1px solid #1a3d5c;
+  border-radius:8px; padding:14px 20px; backdrop-filter:blur(10px);
+  font-family:'JetBrains Mono',monospace; min-width:220px;
+  pointer-events:all;
+">
+  <div style="font-size:8px;color:#2d5040;letter-spacing:1px;margin-bottom:10px;">// tap to open</div>
+  <a href="https://github.com/lowkeyparanoia" target="_blank" style="display:flex;align-items:center;gap:8px;text-decoration:none;padding:7px 0;border-bottom:1px solid #102840;">
+    <span style="font-size:7px;color:#00e5ff;background:rgba(0,229,255,0.1);border:1px solid rgba(0,229,255,0.2);padding:1px 5px;border-radius:2px;">gh</span>
+    <span style="font-size:11px;color:#b8d4c8;">lowkeyparanoia</span>
+  </a>
+  <a href="https://linkedin.com/in/jrenoth" target="_blank" style="display:flex;align-items:center;gap:8px;text-decoration:none;padding:7px 0;border-bottom:1px solid #102840;">
+    <span style="font-size:7px;color:#00e5ff;background:rgba(0,229,255,0.1);border:1px solid rgba(0,229,255,0.2);padding:1px 5px;border-radius:2px;">li</span>
+    <span style="font-size:11px;color:#b8d4c8;">jrenoth</span>
+  </a>
+  <a href="https://lowkeyparanoia.github.io/portfolio/" target="_blank" style="display:flex;align-items:center;gap:8px;text-decoration:none;padding:7px 0;">
+    <span style="font-size:7px;color:#00e5ff;background:rgba(0,229,255,0.1);border:1px solid rgba(0,229,255,0.2);padding:1px 5px;border-radius:2px;">↗</span>
+    <span style="font-size:11px;color:#00ff41;">portfolio</span>
+  </a>
 </div>
 
 <div id="fallback">
@@ -408,36 +431,43 @@ function resetCards() {
   document.getElementById('hint').innerHTML = 'Tap any flat surface to place card';
 }
 
+const linksPanel = () => document.getElementById('links-panel');
+
 function flipCard() {
   cardFlipped = !cardFlipped;
   const targets = xrMode ? placedCards : (demoCard ? [demoCard] : []);
   targets.forEach(card => {
     const targetY = cardFlipped ? Math.PI : 0;
-    const start = card.rotation.y;
-    const dur = 500;
-    const t0 = performance.now();
+    const startY = card.rotation.y;
+    const dur = 500, t0 = performance.now();
     function animate(now) {
       const p = Math.min(1, (now - t0) / dur);
-      const ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
-      card.rotation.y = start + (targetY - start) * ease;
+      const ease = p < 0.5 ? 2*p*p : 1 - Math.pow(-2*p+2,2)/2;
+      card.rotation.y = startY + (targetY - startY) * ease;
       if (p < 1) requestAnimationFrame(animate);
     }
     requestAnimationFrame(animate);
   });
+  // Show/hide clickable links panel when showing back face in 3D preview
+  if (!xrMode && linksPanel()) {
+    linksPanel().style.display = cardFlipped ? 'block' : 'none';
+  }
 }
 
 // ── 3D Demo mode ──────────────────────────────────────────────────
 function start3D() {
   document.getElementById('start').style.display = 'none';
   document.getElementById('hud').classList.add('on');
-  document.getElementById('hint').innerHTML = '↻ <b>Flip</b> to see back · orbit animates';
+  document.getElementById('hint').innerHTML = 'Tap card to flip · links appear on back';
 
   demoCard = makeCard();
   scene.add(demoCard);
 
+  // Single tap on canvas = flip in 3D preview
+  canvas.addEventListener('click', () => { if (!xrMode) flipCard(); }, { passive: true });
+
   renderer.setAnimationLoop(() => {
     t += 0.008;
-    // Gentle float + slow orbit
     if (demoCard) {
       demoCard.position.y = Math.sin(t) * 0.012;
       demoCard.rotation.x = Math.sin(t * 0.4) * 0.06;
@@ -448,6 +478,19 @@ function start3D() {
     renderer.render(scene, camera);
   });
 }
+
+// Double-tap detection for AR flip
+let lastTap = 0;
+canvas.addEventListener('touchend', (e) => {
+  if (!xrMode || placedCards.length === 0) return;
+  const now = Date.now();
+  if (now - lastTap < 350) {
+    e.preventDefault();
+    flipCard();
+    document.getElementById('hint').innerHTML = cardFlipped ? '↻ Double-tap again to flip back' : '↻ Double-tap to flip';
+  }
+  lastTap = now;
+}, { passive: false });
 
 // ── WebXR AR mode — attempt directly, no feature detection ────────
 async function startAR() {
